@@ -25,9 +25,10 @@ sim_img= mk_image(fmdl,1);
 stim = mk_stim_patterns(8, 1, '{op}', '{ad}', {}, 1);
 sim_img.fwd_model.stimulation = stim;
 
-% heights = 68:84:4900;
-heights = 4400;
+heights = 0:84:4900;
+% heights = 4400;
 responses = zeros([length(heights), 1]);
+currentmags = zeros([length(heights), 1]);
 
 for i = 1:length(heights)
 
@@ -41,7 +42,7 @@ for i = 1:length(heights)
     stoppoint = 4981-heights(i); % can be changed to simulate height of film
     sim_img.elem_data(4997:-84:stoppoint)= 0;
     sim_img.elem_data(4998:-84:stoppoint)= 0;
-    
+
     % Solve for expected signals
     sim_img.fwd_solve.get_all_meas = 1;
     inh_data=fwd_solve(sim_img);
@@ -66,14 +67,19 @@ for i = 1:length(heights)
     % plot(inh_data.meas);
     % title("Measurements");
     
+    e_curr = calc_elem_current(sim_img, inh_data.volt(:,3));
+    currentmags(i) = max(rssq(e_curr.'));
+
     % Calculate average magnitude of measured response
     postbend = inh_data.meas;
     responses(i) = mean(abs(postbend-prebend));
-
 end
 
-% plot(responses);
-% return
+plot((3/4900)*heights, responses, 'linewidth', 2, 'color', 'k');
+ylim([0 0.2]);
+box off
+set(gca, 'linewidth', 2, 'fontsize', 15);
+return
 
 
 %% Plot Equipotentials and Streamlines
@@ -95,15 +101,15 @@ n = 15; % Number of streamlines
 xs = linspace(-1, -0.14, n);
 
 % subplot(1,2,1); hold on
+% sum = 0;
 for i = 1:n
     hh=streamline(q.xp,q.yp, q.xc, q.yc, xs(i), sy);
     set(hh,'Linewidth',2, 'color', 'b');
-    % hh=streamline(q.xp,q.yp,-q.xc,-q.yc, sx+r*cos(thetas(i)), sy-r*sin(thetas(i)));
-    % set(hh,'Linewidth',2, 'color', 'b');
+    % if ~isempty(hh)
+    %     Vx = interp2(repmat(q.xp, [60 1]), repmat(q.yp, [42 1]).', q.xc, hh.XData, hh.YData);
+    %     Vy = interp2(repmat(q.xp, [60 1]), repmat(q.yp, [42 1]).', q.yc, hh.XData, hh.YData);
+    %     sum = sum + mean(rssq([Vx; Vy]));
+    % end
 end
-
-% pic = shape_library('get','adult_male','pic');
-% [x, y] = meshgrid( linspace(pic.X(1), pic.X(2),size(imgs,1)), ...
-%                   linspace(pic.Y(2), pic.Y(1),size(imgs,2)));
-% hold on;
-% contour(x,y,imgs,61, 'color', 1/255*[217 95 2]);
+clf
+% sum = sum/n
